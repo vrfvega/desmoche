@@ -15,7 +15,7 @@ export const RANKS = [
   "2",
 ];
 
-export const CARD_SCALE = 2.5;
+export const CARD_SCALE = 3;
 export const TOTAL_CARDS = 52;
 
 export const DECK_BACK_KEY = "card-back";

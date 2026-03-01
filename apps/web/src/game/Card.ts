@@ -7,9 +7,10 @@ type MoveOptions = {
   delay?: number;
   duration?: number;
   ease?: string;
+  onStart?: () => void;
 };
 
-export class PlayingCard {
+export class Card {
   readonly sprite: Phaser.GameObjects.Image;
   private readonly scene: Phaser.Scene;
 
@@ -26,7 +27,12 @@ export class PlayingCard {
       .image(x, y, textureKey)
       .setOrigin(0.5)
       .setScale(scale)
-      .setDepth(depth);
+      .setDepth(depth)
+      .setInteractive({ cursor: "pointer" });
+  }
+
+  stopMotion() {
+    this.scene.tweens.killTweensOf(this.sprite);
   }
 
   moveTo({
@@ -36,7 +42,9 @@ export class PlayingCard {
     delay = 0,
     duration = 460,
     ease = "Cubic.out",
+    onStart,
   }: MoveOptions) {
+    this.stopMotion();
     this.scene.tweens.add({
       targets: this.sprite,
       x,
@@ -45,6 +53,7 @@ export class PlayingCard {
       delay,
       duration,
       ease,
+      onStart,
     });
   }
 }

@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import { useEffect, useRef } from "react";
 import { DemoScene } from "./game/DemoScene";
+import { initDiscordSdk } from "./lib/discord/bootstrap";
 
 function App() {
   const gameContainerRef = useRef<HTMLDivElement | null>(null);
@@ -10,25 +11,38 @@ function App() {
       return;
     }
 
-    const game = new Phaser.Game({
-      type: Phaser.AUTO,
-      parent: gameContainerRef.current,
-      backgroundColor: "#0f172a",
-      render: {
-        pixelArt: true,
-        antialias: false,
-        roundPixels: true,
-      },
-      scale: {
-        mode: Phaser.Scale.RESIZE,
-        width: window.innerWidth,
-        height: window.innerHeight,
-      },
-      scene: DemoScene,
-    });
+    let game: Phaser.Game | null = null;
+    let disposed = false;
+
+    const bootstrap = async () => {
+      await initDiscordSdk();
+      if (disposed || !gameContainerRef.current) {
+        return;
+      }
+
+      game = new Phaser.Game({
+        type: Phaser.AUTO,
+        parent: gameContainerRef.current,
+        backgroundColor: "#0f172a",
+        render: {
+          pixelArt: true,
+          antialias: false,
+          roundPixels: false,
+        },
+        scale: {
+          mode: Phaser.Scale.RESIZE,
+          width: window.innerWidth,
+          height: window.innerHeight,
+        },
+        scene: DemoScene,
+      });
+    };
+
+    void bootstrap();
 
     return () => {
-      game.destroy(true);
+      disposed = true;
+      game?.destroy(true);
     };
   }, []);
 
