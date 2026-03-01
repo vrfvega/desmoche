@@ -17,6 +17,7 @@ export const RANKS = [
 
 export const CARD_SCALE = 3;
 export const TOTAL_CARDS = 52;
+export const UI_FONT_FAMILY = '"Minecraft", monospace';
 
 export const DECK_BACK_KEY = "card-back";
 export const DECK_BACK_PATH = "/Back_1.png";

@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { Card } from "./Card.ts";
-import { DECK_BACK_KEY } from "./constants";
+import { DECK_BACK_KEY, UI_FONT_FAMILY } from "./constants";
 
 export class MeldArea {
   private readonly scene: Phaser.Scene;
@@ -43,7 +43,7 @@ export class MeldArea {
 
     this.label = this.scene.add
       .text(this.centerX, this.centerY - this.getLabelOffsetY(), "Melds", {
-        fontFamily: "monospace",
+        fontFamily: UI_FONT_FAMILY,
         fontSize: "16px",
         color: "#cbd5e1",
       })

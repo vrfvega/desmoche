@@ -5,6 +5,7 @@ import {
   DECK_BACK_KEY,
   DECK_BACK_PATH,
   TOTAL_CARDS,
+  UI_FONT_FAMILY,
 } from "./constants";
 
 export class Deck {
@@ -118,6 +119,15 @@ export class Deck {
     return drawnCards.length;
   }
 
+  dealBulk(cardCount: number, shouldAnimateDeck = true) {
+    const drawnCards = this.drawCards(cardCount);
+    if (drawnCards.length > 0 && shouldAnimateDeck) {
+      this.showDeckTemporarily();
+    }
+
+    return drawnCards.length;
+  }
+
   resize(viewportWidth: number, viewportHeight: number) {
     if (!this.container) {
       return;
@@ -159,7 +169,7 @@ export class Deck {
 
     this.counterText = this.scene.add
       .text(0, 8, `${this.remainingCards}/${TOTAL_CARDS}`, {
-        fontFamily: "monospace",
+        fontFamily: UI_FONT_FAMILY,
         fontSize: "16px",
         color: "#f8fafc",
         align: "right",

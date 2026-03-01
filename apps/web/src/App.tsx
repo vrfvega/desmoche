@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import { useEffect, useRef } from "react";
 import { DemoScene } from "./game/DemoScene";
 import { initDiscordSdk } from "./lib/discord/bootstrap";
+import { preloadFonts } from "./lib/fonts/preloadFonts";
 
 function App() {
   const gameContainerRef = useRef<HTMLDivElement | null>(null);
@@ -15,7 +16,7 @@ function App() {
     let disposed = false;
 
     const bootstrap = async () => {
-      await initDiscordSdk();
+      await Promise.all([initDiscordSdk(), preloadFonts()]);
       if (disposed || !gameContainerRef.current) {
         return;
       }

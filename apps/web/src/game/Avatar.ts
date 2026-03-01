@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { UI_FONT_FAMILY } from "./constants";
 
 type AvatarConfig = {
   username?: string;
@@ -11,7 +12,7 @@ type AvatarConfig = {
 const DEFAULT_USERNAME = "placeholder";
 const DEFAULT_ICON_TEXT = "P";
 const DEFAULT_MIN_RADIUS = 28;
-const DEFAULT_RADIUS_SCALE = 0.28;
+const DEFAULT_RADIUS_SCALE = 0.4;
 const DEFAULT_DEPTH = 140;
 
 export class Avatar {
@@ -20,6 +21,9 @@ export class Avatar {
   private readonly usernameLabel: Phaser.GameObjects.Text;
   private readonly minRadius: number;
   private readonly radiusScale: number;
+  private centerX = 0;
+  private centerY = 0;
+  private radius = 0;
 
   constructor(scene: Phaser.Scene, config: AvatarConfig = {}) {
     const baseDepth = config.depth ?? DEFAULT_DEPTH;
@@ -33,7 +37,7 @@ export class Avatar {
 
     this.iconLabel = scene.add
       .text(0, 0, config.iconText ?? DEFAULT_ICON_TEXT, {
-        fontFamily: "monospace",
+        fontFamily: UI_FONT_FAMILY,
         fontSize: "20px",
         color: "#e2e8f0",
       })
@@ -42,7 +46,7 @@ export class Avatar {
 
     this.usernameLabel = scene.add
       .text(0, 0, config.username ?? DEFAULT_USERNAME, {
-        fontFamily: "monospace",
+        fontFamily: UI_FONT_FAMILY,
         fontSize: "16px",
         color: "#cbd5e1",
       })
@@ -65,6 +69,10 @@ export class Avatar {
   }
 
   layout(centerX: number, centerY: number, radius: number) {
+    this.centerX = centerX;
+    this.centerY = centerY;
+    this.radius = radius;
+
     this.circle.setPosition(centerX, centerY).setRadius(radius);
     this.iconLabel
       .setPosition(centerX, centerY + 2)
@@ -84,6 +92,14 @@ export class Avatar {
       this.minRadius,
       Math.floor(referenceHeight * this.radiusScale),
     );
+  }
+
+  getLayout() {
+    return {
+      centerX: this.centerX,
+      centerY: this.centerY,
+      radius: this.radius,
+    };
   }
 
   destroy() {

@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { Card } from "./Card.ts";
-import { DECK_BACK_KEY } from "./constants";
+import { DECK_BACK_KEY, UI_FONT_FAMILY } from "./constants";
 
 export class DiscardPile {
   private readonly scene: Phaser.Scene;
@@ -37,7 +37,7 @@ export class DiscardPile {
 
     this.label = this.scene.add
       .text(this.centerX, this.centerY + this.labelOffsetY, "Discard", {
-        fontFamily: "monospace",
+        fontFamily: UI_FONT_FAMILY,
         fontSize: "16px",
         color: "#cbd5e1",
       })

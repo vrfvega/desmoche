@@ -4,12 +4,20 @@ import { Deck } from "./Deck";
 import { DiscardPile } from "./DiscardPile";
 import { Hand } from "./Hand";
 import { MeldArea } from "./MeldArea";
-import { CARD_SCALE } from "./constants";
+import { Opponent } from "./Opponent";
+import { OpponentFan } from "./OpponentFan";
+import { Table } from "./Table";
+import { CARD_SCALE, UI_FONT_FAMILY } from "./constants";
 
 const INPUT_AREA_MAX_WIDTH = 800;
 const INPUT_AREA_WIDTH_RATIO = 0.92;
 const HAND_RELAYOUT_DURATION = 180;
 const AVATAR_PADDING = 24;
+const TABLE_AVATAR_GAP = 20;
+const TABLE_AVATAR_BOTTOM_Y_OFFSET = 28;
+const TABLE_AVATAR_HAND_CLEARANCE = 18;
+const OPPONENT_OPENING_CARD_COUNT = 9;
+const OPPONENT_DEAL_DURATION = 520;
 
 const ACTION_BUTTON_X = 36;
 const ACTION_BUTTON_BOTTOM_OFFSET = 120;
@@ -18,7 +26,7 @@ const ACTION_BUTTON_WIDTH = 156;
 const ACTION_BUTTON_HEIGHT = 48;
 
 const ACTION_BUTTON_BASE_STYLE: Phaser.Types.GameObjects.Text.TextStyle = {
-  fontFamily: "monospace",
+  fontFamily: UI_FONT_FAMILY,
   fontSize: "21px",
   align: "center",
 };
@@ -36,14 +44,18 @@ const ACTION_BUTTON_DISABLED_STYLE: Phaser.Types.GameObjects.Text.TextStyle = {
 export class DemoScene extends Phaser.Scene {
   private hand: Hand | null = null;
   private deck: Deck | null = null;
+  private table: Table | null = null;
   private discardPile: DiscardPile | null = null;
   private meldArea: MeldArea | null = null;
-  private avatar: Avatar | null = null;
+  private playerAvatar: Avatar | null = null;
+  private opponentAvatar: Opponent | null = null;
+  private opponentFan: OpponentFan | null = null;
   private discardButton: Phaser.GameObjects.Text | null = null;
   private meldButton: Phaser.GameObjects.Text | null = null;
   private discardEnabled = false;
   private meldEnabled = false;
   private meldBoundsCache: Phaser.Geom.Rectangle = new Phaser.Geom.Rectangle();
+  private handTopCache = Number.POSITIVE_INFINITY;
 
   private readonly onSelectionChanged = (selectedCount: number) => {
     this.setDiscardEnabled(selectedCount === 1);
@@ -73,8 +85,12 @@ export class DemoScene extends Phaser.Scene {
     this.refreshInputLayout(false);
 
     this.createActionButtons();
-    this.deck.dealOpeningHand(9);
-    this.refreshInputLayout(false);
+    this.dealOpeningCards();
+    this.refreshInputLayout(
+      false,
+      HAND_RELAYOUT_DURATION,
+      OPPONENT_DEAL_DURATION,
+    );
     this.positionActionButtons();
 
     this.scale.on("resize", this.handleResize, this);
@@ -82,21 +98,38 @@ export class DemoScene extends Phaser.Scene {
   }
 
   private createTableObjects() {
+    this.table = new Table(
+      this,
+      this.scale.width / 2,
+      this.scale.height / 2,
+      this.scale.width,
+      this.scale.height,
+    );
+
     this.meldArea = new MeldArea(
       this,
       this.scale.width / 2,
       this.scale.height / 2,
     );
 
-    this.avatar = new Avatar(this, {
+    this.playerAvatar = new Avatar(this, {
       username: "username",
       iconText: "U",
     });
+
+    this.opponentAvatar = new Opponent(this, {
+      username: "opponent",
+      iconText: "O",
+      depth: 200,
+    });
+
+    this.opponentFan = new OpponentFan(this);
   }
 
   private refreshInputLayout(
     relayoutHand: boolean,
     handDuration = HAND_RELAYOUT_DURATION,
+    opponentFanDuration = HAND_RELAYOUT_DURATION,
   ) {
     if (!this.hand || !this.meldArea) {
       return;
@@ -117,22 +150,85 @@ export class DemoScene extends Phaser.Scene {
 
     const handBounds = this.hand.getBounds(viewportWidth, viewportHeight);
     const handTop = handBounds?.top ?? viewportHeight - 220;
+    this.handTopCache = handTop;
     const meldCenterY = handTop - 72;
     this.meldArea.setPosition(areaCenterX, meldCenterY);
     this.meldBoundsCache = this.meldArea.getBounds();
 
-    this.positionAvatarTopLeft();
+    this.positionTableSeats(opponentFanDuration);
   }
 
-  private positionAvatarTopLeft() {
-    if (!this.avatar) {
+  private dealOpeningCards() {
+    if (!this.deck || !this.opponentAvatar) {
       return;
     }
 
-    this.avatar.layoutTopLeft(
-      AVATAR_PADDING,
-      AVATAR_PADDING,
-      this.meldBoundsCache.height,
+    this.deck.dealOpeningHand(9);
+
+    const opponentCardsDealt = this.deck.dealBulk(
+      OPPONENT_OPENING_CARD_COUNT,
+      false,
+    );
+    if (opponentCardsDealt === 0 || !this.opponentFan) {
+      return;
+    }
+
+    const opponentLayout = this.opponentAvatar.getLayout();
+    this.opponentFan.spawnFromAvatarBack(
+      opponentCardsDealt,
+      opponentLayout.centerX,
+      opponentLayout.centerY,
+      opponentLayout.radius,
+    );
+  }
+
+  private positionTableSeats(opponentFanDuration = HAND_RELAYOUT_DURATION) {
+    if (!this.table || !this.playerAvatar || !this.opponentAvatar) {
+      return;
+    }
+
+    const { centerX, centerY, radius } = this.table.getLayout();
+    const avatarReferenceHeight =
+      this.meldBoundsCache.height > 0 ? this.meldBoundsCache.height : radius;
+    const avatarRadius = this.playerAvatar.getRadiusForReference(
+      avatarReferenceHeight,
+    );
+    const radialDistance = radius + avatarRadius + TABLE_AVATAR_GAP;
+    const diagonalOffset = Math.floor(radialDistance / Math.SQRT2);
+    const minX = AVATAR_PADDING + avatarRadius;
+    const maxX = this.scale.width - AVATAR_PADDING - avatarRadius;
+    const minY = AVATAR_PADDING + avatarRadius;
+    const maxY = this.scale.height - AVATAR_PADDING - avatarRadius;
+    const handSafeMaxY =
+      this.handTopCache - TABLE_AVATAR_HAND_CLEARANCE - avatarRadius;
+
+    const playerTargetX = centerX - diagonalOffset;
+    const playerTargetY =
+      centerY + diagonalOffset - TABLE_AVATAR_BOTTOM_Y_OFFSET;
+    const playerX = Phaser.Math.Clamp(playerTargetX, minX, maxX);
+    const playerY = Phaser.Math.Clamp(
+      Math.min(playerTargetY, handSafeMaxY),
+      minY,
+      maxY,
+    );
+
+    this.playerAvatar.layout(playerX, playerY, avatarRadius);
+
+    const opponentTargetX = centerX + diagonalOffset;
+    const opponentTargetY = centerY - diagonalOffset;
+
+    this.opponentAvatar.layout(
+      Phaser.Math.Clamp(opponentTargetX, minX, maxX),
+      Phaser.Math.Clamp(opponentTargetY, minY, maxY),
+      avatarRadius,
+    );
+
+    const opponentLayout = this.opponentAvatar.getLayout();
+    this.opponentFan?.layout(
+      opponentLayout.centerX,
+      opponentLayout.centerY,
+      opponentLayout.radius,
+      opponentFanDuration,
     );
   }
 
@@ -216,7 +312,6 @@ export class DemoScene extends Phaser.Scene {
 
     const discardY = this.scale.height - ACTION_BUTTON_BOTTOM_OFFSET;
     const meldY = discardY + ACTION_BUTTON_VERTICAL_GAP;
-    this.positionAvatarTopLeft();
 
     this.discardButton.setPosition(ACTION_BUTTON_X, discardY);
     this.meldButton.setPosition(ACTION_BUTTON_X, meldY);
@@ -249,6 +344,12 @@ export class DemoScene extends Phaser.Scene {
 
   private handleResize(gameSize: Phaser.Structs.Size) {
     this.deck?.resize(gameSize.width, gameSize.height);
+    this.table?.layout(
+      gameSize.width / 2,
+      gameSize.height / 2,
+      gameSize.width,
+      gameSize.height,
+    );
     this.discardPile?.setPosition(gameSize.width / 2, gameSize.height / 2);
     this.refreshInputLayout(true, HAND_RELAYOUT_DURATION);
     this.positionActionButtons();
@@ -256,7 +357,13 @@ export class DemoScene extends Phaser.Scene {
 
   private handleShutdown() {
     this.scale.off("resize", this.handleResize, this);
-    this.avatar?.destroy();
-    this.avatar = null;
+    this.table?.destroy();
+    this.table = null;
+    this.playerAvatar?.destroy();
+    this.playerAvatar = null;
+    this.opponentAvatar?.destroy();
+    this.opponentAvatar = null;
+    this.opponentFan?.destroy();
+    this.opponentFan = null;
   }
 }
